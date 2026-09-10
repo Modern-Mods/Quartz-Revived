@@ -3,7 +3,7 @@ package modernmods.quartzrevived.internal.gl46;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import it.unimi.dsi.fastutil.objects.Reference2IntArrayMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import modernmods.phosphophylliterevived.util.Util;
 import modernmods.quartzrevived.Quartz;
 import modernmods.quartzrevived.internal.common.DrawInfo;
@@ -13,7 +13,7 @@ import static org.lwjgl.opengl.GL45C.*;
 
 public class GL46FeedbackPrograms {
     
-    public static final ResourceLocation shaderLocation = ResourceLocation.fromNamespaceAndPath(Quartz.modid, "shaders/gl46/transform_feedback.vert");
+    public static final Identifier shaderLocation = Identifier.fromNamespaceAndPath(Quartz.modid, "shaders/gl46/transform_feedback.vert");
     
     private static int vertexShader;
     private static final Reference2IntMap<VertexFormatOutput> programs = new Reference2IntArrayMap<>();
@@ -61,7 +61,7 @@ public class GL46FeedbackPrograms {
         // create programs at startup instead of lazily
         // can still be created lazily if they aren't one of these
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.BLOCK));
-        getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.NEW_ENTITY));
+        getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.ENTITY));
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.PARTICLE));
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION));
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION_COLOR));

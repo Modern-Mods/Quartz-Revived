@@ -1,5 +1,7 @@
 package modernmods.quartzrevived.internal.gl46;
 
+
+import com.mojang.blaze3d.opengl.GlStateManager;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceOpenHashMap;
@@ -9,7 +11,7 @@ import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.LightLayer;
 import modernmods.phosphophylliterevived.util.FastArraySet;
 import org.joml.Vector3i;
@@ -135,23 +137,23 @@ public class GL46LightEngine {
     }
     
     public static void bind() {
-        glActiveTexture(GL_TEXTURE1);
+        GlStateManager._activeTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_BUFFER, lookupTexture);
         for (int i = 0; i < 6; i++) {
-            glActiveTexture(GL_TEXTURE2 + i);
+            GlStateManager._activeTexture(GL_TEXTURE2 + i);
             glBindTexture(GL_TEXTURE_2D_ARRAY, intermediateTextures[i]);
         }
-        glActiveTexture(GL_TEXTURE0);
+        GlStateManager._activeTexture(GL_TEXTURE0);
     }
     
     public static void unbind() {
-        glActiveTexture(GL_TEXTURE1);
+        GlStateManager._activeTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_BUFFER, 0);
         for (int i = 0; i < 6; i++) {
-            glActiveTexture(GL_TEXTURE2 + i);
+            GlStateManager._activeTexture(GL_TEXTURE2 + i);
             glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         }
-        glActiveTexture(GL_TEXTURE0);
+        GlStateManager._activeTexture(GL_TEXTURE0);
     }
     
     private static short allocLightChunk() {
@@ -450,7 +452,7 @@ public class GL46LightEngine {
                         final int blockLight;
                         final int skyLight;
                         final var blockState = blockAndTintGetter.getBlockState(mutableBlockPos);
-                        if (!blockState.propagatesSkylightDown(blockAndTintGetter, mutableBlockPos)) {
+                        if (!blockState.propagatesSkylightDown()) {
                             blockLight = -1;
                             skyLight = -1;
                         } else {
@@ -469,7 +471,7 @@ public class GL46LightEngine {
             int lightChunkY = (lightChunkIndex >> 10) & 0x1;
             int lightChunkZ = lightChunkIndex & 0x3FF;
             glProgramUniform3ui(GL46ComputePrograms.lightChunkProgram(), 0, lightChunkX * 17, lightChunkY * 320, lightChunkZ);
-            glUseProgram(GL46ComputePrograms.lightChunkProgram());
+            modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(GL46ComputePrograms.lightChunkProgram());
             glDispatchCompute(17, 17, 17);
             glMemoryBarrier(GL_PIXEL_BUFFER_BARRIER_BIT);
             glBindBuffer(GL_PIXEL_UNPACK_BUFFER, unpackAllocation.allocator().handle());

@@ -1,6 +1,6 @@
 package modernmods.quartzrevived.internal.gl33;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import modernmods.phosphophylliterevived.util.Util;
 import modernmods.quartzrevived.Quartz;
 
@@ -17,7 +17,7 @@ public class GL33ComputePrograms {
     
     private static int createProgram(String path, String... outputs) {
         int shader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(shader, Util.readResourceLocation(ResourceLocation.fromNamespaceAndPath(Quartz.modid, path)));
+        glShaderSource(shader, Util.readResourceLocation(Identifier.fromNamespaceAndPath(Quartz.modid, path)));
         glCompileShader(shader);
         if (glGetShaderi(shader, GL_COMPILE_STATUS) != GL_TRUE) {
             final var infoLog = glGetShaderInfoLog(shader);
@@ -48,12 +48,12 @@ public class GL33ComputePrograms {
     
     public static void startup() {
         dynamicMatrixProgram = createProgram("shaders/gl33/dynamic_matrix.vert", "modelMatrixOut", "normalMatrixOut", "worldPositionOut", "dynamicMatrixIDOut");
-        glUseProgram(dynamicMatrixProgram);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(dynamicMatrixProgram);
         {
             final var dynamicMatricesLocation = glGetUniformLocation(dynamicMatrixProgram, "dynamicMatrices");
             glUniform1i(dynamicMatricesLocation, 0);
         }
-        glUseProgram(0);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(0);
     }
     
     public static void shutdown() {

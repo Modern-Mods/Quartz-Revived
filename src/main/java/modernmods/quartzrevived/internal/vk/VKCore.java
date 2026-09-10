@@ -2,11 +2,10 @@ package modernmods.quartzrevived.internal.vk;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import modernmods.quartzrevived.DrawBatch;
 import modernmods.quartzrevived.internal.Buffer;
 import modernmods.quartzrevived.internal.QuartzCore;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
 import java.util.List;
@@ -52,7 +51,7 @@ public class VKCore extends QuartzCore {
     }
     
     @Override
-    public void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, long pFinishTimeNano, boolean pDrawBlockOutline, Camera pActiveRenderInfo, GameRenderer pGameRenderer, LightTexture pLightmap, Matrix4f pProjection) {
+    public void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, Vec3 pCameraPosition, Matrix4f pProjection) {
     
     }
     
@@ -67,7 +66,7 @@ public class VKCore extends QuartzCore {
     }
     
     @Override
-    public void shadowPass(Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
+    public void shadowPass(Matrix4f modelViewMatrix) {
     
     }
     

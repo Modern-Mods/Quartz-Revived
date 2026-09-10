@@ -1,6 +1,7 @@
 package modernmods.quartzrevived.internal.gl33.batching;
 
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import modernmods.quartzrevived.internal.QuartzCore;
 import modernmods.quartzrevived.internal.common.B3DStateHelper;
 import modernmods.quartzrevived.internal.common.InternalMesh;

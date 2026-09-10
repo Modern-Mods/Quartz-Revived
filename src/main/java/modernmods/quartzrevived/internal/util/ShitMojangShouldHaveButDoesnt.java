@@ -1,122 +1,82 @@
 package modernmods.quartzrevived.internal.util;
 
-import com.mojang.blaze3d.platform.Window;
+import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.ShaderInstance;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import modernmods.phosphophylliterevived.registry.ClientOnly;
-import modernmods.phosphophylliterevived.registry.OnModLoad;
-import modernmods.quartzrevived.Quartz;
-import modernmods.quartzrevived.QuartzEvent;
-import modernmods.quartzrevived.internal.common.B3DStateHelper;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
-import static org.lwjgl.opengl.GL33C.*;
+import java.util.Map;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
 
 @ClientOnly
 public class ShitMojangShouldHaveButDoesnt {
-    private static int drawVAO = 0;
-    
-    @OnModLoad
-    private static void onModLoad() {
-        Quartz.EVENT_BUS.addListener(ShitMojangShouldHaveButDoesnt::quartzStartupEvent);
-        Quartz.EVENT_BUS.addListener(ShitMojangShouldHaveButDoesnt::quartzShutdownEvent);
+
+    public static void drawRenderTypeVertexBuffer(RenderType renderType, GpuBuffer vertexBuffer, int vertexCount) {
+        drawRenderTypeVertexBuffer(RenderSystem.getModelViewMatrix(), renderType, vertexBuffer, vertexCount);
     }
-    
-    private static void quartzStartupEvent(QuartzEvent.Startup event) {
-        drawVAO = glGenVertexArrays();
-    }
-    
-    private static void quartzShutdownEvent(QuartzEvent.Shutdown event) {
-        glDeleteVertexArrays(drawVAO);
-    }
-    
-    public static void drawRenderTypePreboundVertexBuffer(RenderType renderType, int vertexCount) {
-        drawRenderTypePreboundVertexBuffer(RenderSystem.getModelViewMatrix(), RenderSystem.getProjectionMatrix(), renderType, vertexCount);
-    }
-    
-    public static void drawRenderTypePreboundVertexBuffer(Matrix4f modelViewMatrix, Matrix4f projectionMatrix, RenderType renderType, int vertexCount) {
-        renderType.setupRenderState();
-        B3DStateHelper.bindVertexArray(drawVAO);
-        // Iris hooks into the default one, so i have to use the private one
-        renderType.format()._setupBufferState();
-        
-        drawWithShaderSequentialIndices(modelViewMatrix, projectionMatrix, RenderSystem.getShader(), renderType.mode(), vertexCount);
-        
-        renderType.format()._clearBufferState();
-        B3DStateHelper.bindVertexArray(0);
-        renderType.clearRenderState();
-    }
-    
-    public static void drawWithShaderSequentialIndices(Matrix4f modelViewMatrix, Matrix4f projectionMatrix, ShaderInstance shaderInstance, VertexFormat.Mode mode, int vertexCount) {
+
+    public static void drawRenderTypeVertexBuffer(Matrix4f modelViewMatrix, RenderType renderType, GpuBuffer vertexBuffer, int vertexCount) {
+        final var mode = renderType.mode();
         final var indexCount = mode.indexCount(vertexCount);
-        final var indexBuffer = RenderSystem.getSequentialBuffer(mode);
-        // this does bind it
-        // but it shouldn't be called just "bind"
-        // resizeAndBind maybe?
-        indexBuffer.bind(indexCount);
-        drawElementsWithShader(modelViewMatrix, projectionMatrix, shaderInstance, mode, indexCount, indexBuffer.type());
-        // technically unncesscary, but there are going to be so few draws, it doesnt matter
-        B3DStateHelper.bindElementBuffer(0);
-    }
-    
-    public static void drawElementsWithShader(Matrix4f modelViewMatrix, Matrix4f projectionMatrix, ShaderInstance shaderInstance, VertexFormat.Mode mode, int indexCount, VertexFormat.IndexType indexType) {
-        
-        for (int i = 0; i < 12; ++i) {
-            int j = RenderSystem.getShaderTexture(i);
-            shaderInstance.setSampler("Sampler" + i, j);
+        if (indexCount == 0) {
+            return;
         }
-        
-        if (shaderInstance.MODEL_VIEW_MATRIX != null) {
-            shaderInstance.MODEL_VIEW_MATRIX.set(modelViewMatrix);
+
+        final var sequentialIndices = RenderSystem.getSequentialBuffer(mode);
+        final var indexBuffer = sequentialIndices.getBuffer(indexCount);
+
+        final var setup = renderType.state;
+
+        final var modelViewStack = RenderSystem.getModelViewStack();
+        final var layeringModifier = setup.layeringTransform.getModifier();
+        if (layeringModifier != null) {
+            modelViewStack.pushMatrix();
+            layeringModifier.accept(modelViewStack);
         }
-        
-        if (shaderInstance.PROJECTION_MATRIX != null) {
-            shaderInstance.PROJECTION_MATRIX.set(projectionMatrix);
+
+        final var dynamicTransforms = RenderSystem.getDynamicUniforms().writeTransform(
+                modelViewMatrix,
+                new Vector4f(1.0F, 1.0F, 1.0F, 1.0F),
+                new Vector3f(),
+                setup.textureTransform.getMatrix());
+
+        final var renderTarget = renderType.outputTarget().getRenderTarget();
+        final GpuTextureView colorTexture = RenderSystem.outputColorTextureOverride != null
+                ? RenderSystem.outputColorTextureOverride
+                : renderTarget.getColorTextureView();
+        final GpuTextureView depthTexture = renderTarget.useDepth
+                ? (RenderSystem.outputDepthTextureOverride != null ? RenderSystem.outputDepthTextureOverride : renderTarget.getDepthTextureView())
+                : null;
+
+        try (final var renderPass = RenderSystem.getDevice()
+                .createCommandEncoder()
+                .createRenderPass(() -> "Quartz draw for " + renderType, colorTexture, OptionalInt.empty(), depthTexture, OptionalDouble.empty())) {
+            renderPass.setPipeline(renderType.pipeline());
+
+            final var scissorState = RenderSystem.getScissorStateForRenderTypeDraws();
+            if (scissorState.enabled()) {
+                renderPass.enableScissor(scissorState.x(), scissorState.y(), scissorState.width(), scissorState.height());
+            }
+
+            RenderSystem.bindDefaultUniforms(renderPass);
+            renderPass.setUniform("DynamicTransforms", dynamicTransforms);
+            renderPass.setVertexBuffer(0, vertexBuffer);
+
+            for (final Map.Entry<String, net.minecraft.client.renderer.rendertype.RenderSetup.TextureAndSampler> entry : setup.getTextures().entrySet()) {
+                renderPass.bindTexture(entry.getKey(), entry.getValue().textureView(), entry.getValue().sampler());
+            }
+
+            renderPass.setIndexBuffer(indexBuffer, sequentialIndices.type());
+            renderPass.drawIndexed(0, 0, indexCount, 1);
         }
-        
-        if (shaderInstance.COLOR_MODULATOR != null) {
-            shaderInstance.COLOR_MODULATOR.set(RenderSystem.getShaderColor());
+
+        if (layeringModifier != null) {
+            modelViewStack.popMatrix();
         }
-        
-        if (shaderInstance.FOG_START != null) {
-            shaderInstance.FOG_START.set(RenderSystem.getShaderFogStart());
-        }
-        
-        if (shaderInstance.FOG_END != null) {
-            shaderInstance.FOG_END.set(RenderSystem.getShaderFogEnd());
-        }
-        
-        if (shaderInstance.FOG_COLOR != null) {
-            shaderInstance.FOG_COLOR.set(RenderSystem.getShaderFogColor());
-        }
-        
-        if (shaderInstance.FOG_SHAPE != null) {
-            shaderInstance.FOG_SHAPE.set(RenderSystem.getShaderFogShape().getIndex());
-        }
-        
-        if (shaderInstance.TEXTURE_MATRIX != null) {
-            shaderInstance.TEXTURE_MATRIX.set(RenderSystem.getTextureMatrix());
-        }
-        
-        if (shaderInstance.GAME_TIME != null) {
-            shaderInstance.GAME_TIME.set(RenderSystem.getShaderGameTime());
-        }
-        
-        if (shaderInstance.SCREEN_SIZE != null) {
-            Window window = Minecraft.getInstance().getWindow();
-            shaderInstance.SCREEN_SIZE.set((float) window.getWidth(), (float) window.getHeight());
-        }
-        
-        if (shaderInstance.LINE_WIDTH != null && (mode == VertexFormat.Mode.LINES || mode == VertexFormat.Mode.LINE_STRIP)) {
-            shaderInstance.LINE_WIDTH.set(RenderSystem.getShaderLineWidth());
-        }
-        
-        RenderSystem.setupShaderLights(shaderInstance);
-        shaderInstance.apply();
-        RenderSystem.drawElements(mode.asGLMode, indexCount, indexType.asGLType);
-        shaderInstance.clear();
     }
 }

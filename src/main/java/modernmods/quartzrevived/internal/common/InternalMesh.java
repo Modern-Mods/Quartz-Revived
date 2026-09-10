@@ -7,7 +7,8 @@ import it.unimi.dsi.fastutil.objects.Object2LongArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.joml.Vector3f;
 import modernmods.phosphophylliterevived.util.NonnullDefault;
 import modernmods.quartzrevived.Mesh;
@@ -39,7 +40,11 @@ public class InternalMesh implements Mesh {
     public Object2LongArrayMap<RenderType> build(Function<Integer, PointerWrapper> bufferCreator) {
         Builder builder = new Builder();
         buildFunc.accept(builder);
-        var buffer = bufferCreator.apply(builder.bytesRequired());
+        final int bytesRequired = builder.bytesRequired();
+        if (bytesRequired <= 0) {
+            return new Object2LongArrayMap<>();
+        }
+        var buffer = bufferCreator.apply(bytesRequired);
         return builder.build(buffer);
     }
     
@@ -77,6 +82,17 @@ public class InternalMesh implements Mesh {
         }
         
         private static class BufferBuilder implements VertexConsumer {
+            @Override
+            public VertexConsumer setLineWidth(float width) {
+                return this;
+            }
+            
+            @Override
+            public VertexConsumer setColor(int color) {
+                currentVertex.rgba = (color & 0xFF00FF00) | ((color >> 16) & 0xFF) | ((color & 0xFF) << 16);
+                return this;
+            }
+            
             Vertex currentVertex = new Vertex();
             final LinkedList<Vertex> vertices = new LinkedList<>();
             
@@ -159,9 +175,6 @@ public class InternalMesh implements Mesh {
         
         @Override
         public VertexConsumer getBuffer(RenderType renderType) {
-            if (!(renderType instanceof RenderType.CompositeRenderType)) {
-                throw new IllegalArgumentException("RenderType must be composite type");
-            }
             return buffers.computeIfAbsent(renderType, e -> new BufferBuilder());
         }
         
@@ -269,7 +282,12 @@ public class InternalMesh implements Mesh {
                 Object2LongArrayMap<RenderType> rawDrawInfo;
                 drawInfo.clear();
                 rawDrawInfo = mesh.build(this::allocBuffer);
-                assert vertexAllocation != null;
+                if (vertexAllocation == null) {
+                    for (int i = 0; i < buildCallbacks.size(); i++) {
+                        buildCallbacks.get(i).accept(this);
+                    }
+                    return;
+                }
                 vertexAllocation.dirty();
                 for (var renderTypeEntry : rawDrawInfo.object2LongEntrySet()) {
                     var renderType = renderTypeEntry.getKey();

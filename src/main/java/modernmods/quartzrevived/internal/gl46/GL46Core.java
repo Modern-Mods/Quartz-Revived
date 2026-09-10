@@ -1,14 +1,14 @@
 package modernmods.quartzrevived.internal.gl46;
 
+
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import modernmods.phosphophylliterevived.util.NonnullDefault;
 import modernmods.quartzrevived.DrawBatch;
 import modernmods.quartzrevived.internal.Buffer;
@@ -20,6 +20,7 @@ import org.lwjgl.opengl.KHRDebug;
 
 import java.util.List;
 
+import static org.lwjgl.opengl.GL46C.glDepthMask;
 import static org.lwjgl.opengl.GL46C.glFinish;
 
 @NonnullDefault
@@ -82,7 +83,7 @@ public class GL46Core extends QuartzCore {
     }
     
     @Override
-    public void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, long pFinishTimeNano, boolean pDrawBlockOutline, Camera pActiveRenderInfo, GameRenderer pGameRenderer, LightTexture pLightmap, Matrix4f pProjection) {
+    public void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, Vec3 pCameraPosition, Matrix4f pProjection) {
         deletionQueue.runAll();
         
         frameInFlight++;
@@ -97,7 +98,7 @@ public class GL46Core extends QuartzCore {
             deltaNano = 0;
         }
         
-        var playerPosition = pActiveRenderInfo.getPosition();
+        var playerPosition = pCameraPosition;
         drawInfo.playerPosition.set((int) playerPosition.x, (int) playerPosition.y, (int) playerPosition.z);
         drawInfo.playerPositionNegative.set(drawInfo.playerPosition).negate();
         drawInfo.playerSubBlock.set(playerPosition.x - (int) playerPosition.x, playerPosition.y - (int) playerPosition.y, playerPosition.z - (int) playerPosition.z);
@@ -131,11 +132,11 @@ public class GL46Core extends QuartzCore {
     }
     
     @Override
-    public void shadowPass(Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
+    public void shadowPass(Matrix4f modelViewMatrix) {
         if(!GL46FeedbackDrawing.hasBatch()){
             return;
         }
-        GL46FeedbackDrawing.setMatrices(projectionMatrix, modelViewMatrix);
+        GL46FeedbackDrawing.setMatrices(modelViewMatrix);
         GL46FeedbackDrawing.getActiveRenderTypes().forEach(GL46FeedbackDrawing::drawRenderType);
     }
     
@@ -145,16 +146,11 @@ public class GL46Core extends QuartzCore {
             return;
         }
         
-        BufferUploader.invalidate();
-        IrisDetection.bindIrisFramebuffer();
         
-        GL46FeedbackDrawing.setMatrices(RenderSystem.getProjectionMatrix(), drawInfo.modelViewMatrix);
+        GL46FeedbackDrawing.setMatrices(drawInfo.modelViewMatrix);
         
         for (final var renderType : GL46FeedbackDrawing.getActiveRenderTypes()) {
-            if (!(renderType instanceof RenderType.CompositeRenderType compositeRenderType)) {
-                continue;
-            }
-            if(compositeRenderType.state().transparencyState != RenderStateShard.NO_TRANSPARENCY) {
+            if (renderType.hasBlending()) {
                 continue;
             }
             GL46FeedbackDrawing.drawRenderType(renderType);
@@ -167,19 +163,15 @@ public class GL46Core extends QuartzCore {
             return;
         }
         
-        BufferUploader.invalidate();
         
         for (final var renderType : GL46FeedbackDrawing.getActiveRenderTypes()) {
-            if (!(renderType instanceof RenderType.CompositeRenderType compositeRenderType)) {
+            if (!renderType.hasBlending()) {
                 continue;
             }
-            if(compositeRenderType.state().transparencyState == RenderStateShard.NO_TRANSPARENCY) {
-                continue;
-            }
-            RenderSystem.depthMask(false);
+            GlStateManager._depthMask(false);
             GL46FeedbackDrawing.drawRenderType(renderType);
         }
-        RenderSystem.depthMask(true);
+        GlStateManager._depthMask(true);
     }
     
     @Override

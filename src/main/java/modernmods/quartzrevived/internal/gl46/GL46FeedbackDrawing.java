@@ -1,8 +1,13 @@
 package modernmods.quartzrevived.internal.gl46;
 
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.opengl.GlBuffer;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import modernmods.quartzrevived.DrawBatch;
 import modernmods.quartzrevived.internal.*;
 import modernmods.quartzrevived.internal.common.B3DStateHelper;
@@ -13,7 +18,7 @@ import org.joml.Matrix4f;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
-import static modernmods.quartzrevived.internal.util.ShitMojangShouldHaveButDoesnt.drawRenderTypePreboundVertexBuffer;
+import static modernmods.quartzrevived.internal.util.ShitMojangShouldHaveButDoesnt.drawRenderTypeVertexBuffer;
 import static org.lwjgl.opengl.GL45C.*;
 
 public class GL46FeedbackDrawing {
@@ -34,15 +39,19 @@ public class GL46FeedbackDrawing {
     
     private static int feedbackVAO;
     
-    private record FeedbackBuffer(int buffer, int size) {
+    private static final class FeedbackBuffer {
+        final GpuBuffer gpuBuffer;
+        final int buffer;
+        final int size;
+        
         private FeedbackBuffer(int size) {
-            this(glCreateBuffers(), roundUpPo2(size));
-            // no flags, only used on the server side
-            glNamedBufferStorage(buffer, this.size, 0);
+            this.size = roundUpPo2(Math.max(size, 1));
+            this.gpuBuffer = RenderSystem.getDevice().createBuffer(() -> "Quartz feedback buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, this.size);
+            this.buffer = ((GlBuffer) this.gpuBuffer).handle;
         }
         
         void delete() {
-            glDeleteBuffers(buffer);
+            gpuBuffer.close();
         }
         
         private static int roundUpPo2(int minSize) {
@@ -174,14 +183,14 @@ public class GL46FeedbackDrawing {
     
     public static void beginFrame() {
         for (int i = 0; i < 2; i++) {
-            RenderSystem.activeTexture(GL_TEXTURE0 + i);
-            RenderSystem.bindTexture(0);
+            GlStateManager._activeTexture(GL_TEXTURE0 + i);
+            GlStateManager._bindTexture(0);
         }
-        RenderSystem.activeTexture(GL_TEXTURE0);
+        GlStateManager._activeTexture(GL_TEXTURE0);
         B3DStateHelper.bindVertexArray(0);
         B3DStateHelper.bindElementBuffer(0);
         
-        glUseProgram(GL46ComputePrograms.dynamicMatrixProgram());
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(GL46ComputePrograms.dynamicMatrixProgram());
         for (final var batchRef : drawBatches) {
             final var batch = batchRef.get();
             if (batch == null) {
@@ -192,7 +201,7 @@ public class GL46FeedbackDrawing {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, 0);
-        glUseProgram(0);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(0);
         glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
     }
     
@@ -235,7 +244,7 @@ public class GL46FeedbackDrawing {
                 renderTypeFeedbackBuffers.put(renderType, buffer);
             }
             
-            glUseProgram(GL46FeedbackPrograms.getProgramForOutputFormat(outputFormat));
+            modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(GL46FeedbackPrograms.getProgramForOutputFormat(outputFormat));
             
             glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, buffer.buffer);
             glBeginTransformFeedback(GL_POINTS);
@@ -267,11 +276,9 @@ public class GL46FeedbackDrawing {
         prevousFrameSyncs[frameInFlight] = frameSync;
     }
     
-    private static Matrix4f projection;
     private static Matrix4f modelView;
     
-    public static void setMatrices(Matrix4f projection, Matrix4f modelView) {
-        GL46FeedbackDrawing.projection = projection;
+    public static void setMatrices(Matrix4f modelView) {
         GL46FeedbackDrawing.modelView = modelView;
     }
     
@@ -285,7 +292,6 @@ public class GL46FeedbackDrawing {
             return;
         }
         
-        B3DStateHelper.bindArrayBuffer(feedbackBuffer.buffer);
-        drawRenderTypePreboundVertexBuffer(modelView, projection, renderType, drawnVertices);
+        drawRenderTypeVertexBuffer(modelView, renderType, feedbackBuffer.gpuBuffer, drawnVertices);
     }
 }

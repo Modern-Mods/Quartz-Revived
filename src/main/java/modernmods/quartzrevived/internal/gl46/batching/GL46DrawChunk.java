@@ -1,6 +1,7 @@
 package modernmods.quartzrevived.internal.gl46.batching;
 
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import modernmods.phosphophylliterevived.util.NonnullDefault;
 import modernmods.quartzrevived.internal.common.InternalMesh;
 import modernmods.quartzrevived.internal.util.IndirectDrawInfo;

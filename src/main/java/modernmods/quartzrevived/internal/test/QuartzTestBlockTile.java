@@ -1,6 +1,5 @@
 package modernmods.quartzrevived.internal.test;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -18,7 +17,6 @@ import modernmods.quartzrevived.QuartzEvent;
 import javax.annotation.ParametersAreNonnullByDefault;
 
 @ParametersAreNonnullByDefault
-@MethodsReturnNonnullByDefault
 public class QuartzTestBlockTile extends PhosphophylliteTile {
     
     @RegisterTile("quartz_test_block")

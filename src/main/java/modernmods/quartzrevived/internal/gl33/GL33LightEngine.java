@@ -1,5 +1,7 @@
 package modernmods.quartzrevived.internal.gl33;
 
+
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ReferenceOpenHashMap;
@@ -7,7 +9,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.LightLayer;
 import modernmods.phosphophylliterevived.util.FastArraySet;
 import modernmods.phosphophylliterevived.util.VectorUtil;
@@ -85,15 +87,15 @@ public class GL33LightEngine {
     }
     
     public static void bindIndex() {
-        glActiveTexture(GL_TEXTURE1);
+        GlStateManager._activeTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_BUFFER, lookupTexture);
-        glActiveTexture(GL_TEXTURE0);
+        GlStateManager._activeTexture(GL_TEXTURE0);
     }
     
     public static void unbindIndex() {
-        glActiveTexture(GL_TEXTURE1);
+        GlStateManager._activeTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_3D, 0);
-        glActiveTexture(GL_TEXTURE0);
+        GlStateManager._activeTexture(GL_TEXTURE0);
     }
     
     private static short allocLightChunk() {
@@ -133,7 +135,7 @@ public class GL33LightEngine {
                 // just allocated the texture,
                 glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R16UI, GL33Statics.LIGHT_TEXTURE_ARRAY_BLOCK_SIZE.x(), GL33Statics.LIGHT_TEXTURE_ARRAY_BLOCK_SIZE.y(), GL33Statics.LIGHT_TEXTURE_ARRAY_BLOCK_SIZE.z(), 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, 0);
             }
-            RenderSystem.bindTexture(0);
+            GlStateManager._bindTexture(0);
             freeCommitedIndices += 56;
             residentLayers.set(layerIndex, true);
             
@@ -211,7 +213,7 @@ public class GL33LightEngine {
                 break;
             }
         }
-        RenderSystem.bindTexture(0);
+        GlStateManager._bindTexture(0);
     }
     
     public static void runAllocUpdates() {
@@ -309,7 +311,7 @@ public class GL33LightEngine {
             }
             final var textures = intermediateTextures[i >> 4];
             for (int j = 0; j < 6; j++) {
-                RenderSystem.activeTexture(GL_TEXTURE2 + j);
+                GlStateManager._activeTexture(GL_TEXTURE2 + j);
                 glBindTexture(GL_TEXTURE_2D_ARRAY, textures[j]);
             }
             glUniform1ui(activeLayerLocation, i);
@@ -326,8 +328,8 @@ public class GL33LightEngine {
             VAO1 ^= VAO2;
         }
         for (int j = 0; j < 6; j++) {
-            RenderSystem.activeTexture(GL_TEXTURE2 + j);
-            RenderSystem.bindTexture(0);
+            GlStateManager._activeTexture(GL_TEXTURE2 + j);
+            GlStateManager._bindTexture(0);
             glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
         }
         return srcBuffer;
@@ -394,7 +396,7 @@ public class GL33LightEngine {
                         final int blockLight;
                         final int skyLight;
                         final var blockState = blockAndTintGetter.getBlockState(mutableBlockPos);
-                        if (!blockState.propagatesSkylightDown(blockAndTintGetter, mutableBlockPos)) {
+                        if (!blockState.propagatesSkylightDown()) {
                             blockLight = -1;
                             skyLight = -1;
                         } else {

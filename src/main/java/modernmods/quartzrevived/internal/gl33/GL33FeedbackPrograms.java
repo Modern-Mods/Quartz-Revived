@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.VertexFormatElement;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.ints.IntIntPair;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import modernmods.phosphophylliterevived.util.Util;
 import modernmods.quartzrevived.Quartz;
 import modernmods.quartzrevived.internal.util.VertexFormatOutput;
@@ -20,8 +20,8 @@ import static org.lwjgl.opengl.GL33C.*;
 // TODO: GL33 and GL46 variants basically identical, should merge
 public class GL33FeedbackPrograms {
     
-    public static final ResourceLocation shaderLocation = ResourceLocation.fromNamespaceAndPath(Quartz.modid, "shaders/gl33/transform_feedback.vert");
-    public static final ResourceLocation postShaderLocation = ResourceLocation.fromNamespaceAndPath(Quartz.modid, "shaders/gl33/light_post_pass.vert");
+    public static final Identifier shaderLocation = Identifier.fromNamespaceAndPath(Quartz.modid, "shaders/gl33/transform_feedback.vert");
+    public static final Identifier postShaderLocation = Identifier.fromNamespaceAndPath(Quartz.modid, "shaders/gl33/light_post_pass.vert");
     
     private static int vertexShader;
     private static final Reference2IntMap<VertexFormatOutput> programs = new Reference2IntArrayMap<>();
@@ -89,7 +89,7 @@ public class GL33FeedbackPrograms {
         // create programs at startup instead of lazily
         // can still be created lazily if they aren't one of these
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.BLOCK));
-        getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.NEW_ENTITY));
+        getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.ENTITY));
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.PARTICLE));
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION));
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION_COLOR));
@@ -102,7 +102,7 @@ public class GL33FeedbackPrograms {
         getProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL));
         
         getPostProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.BLOCK));
-        getPostProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.NEW_ENTITY));
+        getPostProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.ENTITY));
         getPostProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.PARTICLE));
         getPostProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION));
         getPostProgramForOutputFormat(VertexFormatOutput.of(DefaultVertexFormat.POSITION_COLOR));
@@ -157,10 +157,10 @@ public class GL33FeedbackPrograms {
         final var UBOLocation = glGetUniformBlockIndex(vertexProgram, "MainUBO");
         glUniformBlockBinding(vertexProgram, UBOLocation, 0);
         
-        glUseProgram(vertexProgram);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(vertexProgram);
         final var chunkIndexTextureLocation = glGetUniformLocation(vertexProgram, "intermediateLightChunkIndexLookup");
         glUniform1i(chunkIndexTextureLocation, 1);
-        glUseProgram(0);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(0);
         
         return vertexProgram;
     }
@@ -186,12 +186,12 @@ public class GL33FeedbackPrograms {
         final var UBOLocation = glGetUniformBlockIndex(vertexProgram, "MainUBO");
         glUniformBlockBinding(vertexProgram, UBOLocation, 0);
         
-        glUseProgram(vertexProgram);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(vertexProgram);
         for (int i = 0; i < 6; i++) {
             final var chunkIndexTextureLocation = glGetUniformLocation(vertexProgram, "intermediateLightDataTexture[" + i + "]");
             glUniform1i(chunkIndexTextureLocation, 2 + i);
         }
-        glUseProgram(0);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(0);
         
         return new IntIntImmutablePair(vertexProgram, glGetUniformLocation(vertexProgram, "activeArrayLayer"));
     }

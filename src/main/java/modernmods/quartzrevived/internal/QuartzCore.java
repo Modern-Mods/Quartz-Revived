@@ -3,10 +3,12 @@ package modernmods.quartzrevived.internal;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.resources.Identifier;
+import net.minecraft.client.gui.components.debug.DebugScreenEntry;
+import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
+import net.minecraft.client.gui.components.debug.DebugScreenProfile;
+import net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import modernmods.phosphophylliterevived.registry.ClientOnly;
 import modernmods.phosphophylliterevived.registry.OnModLoad;
@@ -47,7 +49,14 @@ public abstract class QuartzCore {
     }
     
     static {
-        if (!Thread.currentThread().getStackTrace()[2].getClassName().equals(EventListener.class.getName())) {
+        boolean fromEventListener = false;
+        for (final var frame : Thread.currentThread().getStackTrace()) {
+            if (frame.getClassName().equals(EventListener.class.getName())) {
+                fromEventListener = true;
+                break;
+            }
+        }
+        if (!fromEventListener) {
             throw new IllegalStateException("Attempt to init quartz before it is ready");
         }
         LOGGER.info("Quartz Init");
@@ -104,21 +113,28 @@ public abstract class QuartzCore {
     
     private static boolean wasInit = false;
     
-    static void startup() {
+    public static void ensureStarted() {
+        if (wasInit) {
+            return;
+        }
         INSTANCE.startupInternal();
         Quartz.EVENT_BUS.post(new QuartzEvent.Startup());
         wasInit = true;
-        NeoForge.EVENT_BUS.addListener(QuartzCore::addDebugTextEvent);
     }
     
-    private static void addDebugTextEvent(CustomizeGuiOverlayEvent.DebugText debugTextEvent) {
-        if (!Minecraft.getInstance().getDebugOverlay().showDebugScreen()) {
-            return;
-        }
-        final var list = debugTextEvent.getRight();
-        list.add("");
-        INSTANCE.addDebugText(list);
-        list.add("");
+    public static void registerDebugEntries(RegisterDebugEntriesEvent event) {
+        final var id = net.minecraft.resources.Identifier.fromNamespaceAndPath(Quartz.modid, "stats");
+        event.register(id, (DebugScreenEntry) (displayer, serverOrClientLevel, clientChunk, serverChunk) -> {
+            if (!wasInit) {
+                return;
+            }
+            final var list = new java.util.ArrayList<String>();
+            INSTANCE.addDebugText(list);
+            for (final var line : list) {
+                displayer.addLine(line);
+            }
+        });
+        event.includeInProfile(id, DebugScreenProfile.DEFAULT, DebugScreenEntryStatus.IN_OVERLAY);
     }
     
     protected abstract void startupInternal();
@@ -169,7 +185,7 @@ public abstract class QuartzCore {
     
     public abstract Buffer allocBuffer(boolean GPUOnly);
     
-    public abstract void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, long pFinishTimeNano, boolean pDrawBlockOutline, Camera pActiveRenderInfo, GameRenderer pGameRenderer, LightTexture pLightmap, Matrix4f pProjection);
+    public abstract void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, Vec3 pCameraPosition, Matrix4f pProjection);
     
     /**
      * This is abstract because VK can handle the writes being done on a separate thread
@@ -178,7 +194,7 @@ public abstract class QuartzCore {
     
     public abstract void preTerrainSetup();
     
-    public abstract void shadowPass(Matrix4f modelViewMatrix, Matrix4f projectionMatrix);
+    public abstract void shadowPass(Matrix4f modelViewMatrix);
     
     public abstract void preOpaque();
     

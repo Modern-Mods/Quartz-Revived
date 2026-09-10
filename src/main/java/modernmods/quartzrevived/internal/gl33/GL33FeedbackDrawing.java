@@ -1,8 +1,13 @@
 package modernmods.quartzrevived.internal.gl33;
 
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.opengl.GlBuffer;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import modernmods.quartzrevived.DrawBatch;
 import modernmods.quartzrevived.internal.Buffer;
 import modernmods.quartzrevived.internal.IrisDetection;
@@ -16,7 +21,7 @@ import org.joml.Matrix4f;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
-import static modernmods.quartzrevived.internal.util.ShitMojangShouldHaveButDoesnt.drawRenderTypePreboundVertexBuffer;
+import static modernmods.quartzrevived.internal.util.ShitMojangShouldHaveButDoesnt.drawRenderTypeVertexBuffer;
 import static org.lwjgl.opengl.GL33C.*;
 
 public class GL33FeedbackDrawing {
@@ -37,24 +42,36 @@ public class GL33FeedbackDrawing {
     private static final ReferenceArrayList<RenderType> inUseRenderTypes = new ReferenceArrayList<>();
     
     private static final Object2ObjectMap<RenderType, FeedbackBuffer> renderTypeFeedbackBuffers = new Object2ObjectArrayMap<>();
-    private static final Object2IntMap<RenderType> renderTypeDrawBuffer = new Object2IntArrayMap<>();
+    private static final Object2ObjectMap<RenderType, GpuBuffer> renderTypeDrawBuffer = new Object2ObjectArrayMap<>();
     
     private static Buffer.CallbackHandle rebuildCallbackHandle;
     
-    private record FeedbackBuffer(int buffer1, int buffer2, int size, int VAO1, int VAO2) {
+    private static final class FeedbackBuffer {
+        final GpuBuffer gpuBuffer1;
+        final GpuBuffer gpuBuffer2;
+        final int buffer1;
+        final int buffer2;
+        final int size;
+        final int VAO1;
+        final int VAO2;
+        
         private FeedbackBuffer(int size) {
-            this(glGenBuffers(), glGenBuffers(), roundUpPo2(size), glGenVertexArrays(), glGenVertexArrays());
-            // no flags, only used on the server side
-            glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, buffer1);
-            glBufferData(GL_TRANSFORM_FEEDBACK_BUFFER, this.size, GL_STATIC_DRAW);
-            glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, buffer2);
-            glBufferData(GL_TRANSFORM_FEEDBACK_BUFFER, this.size, GL_STATIC_DRAW);
-            glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
+            this.size = roundUpPo2(Math.max(size, 1));
+            this.gpuBuffer1 = RenderSystem.getDevice().createBuffer(() -> "Quartz feedback buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, this.size);
+            this.gpuBuffer2 = RenderSystem.getDevice().createBuffer(() -> "Quartz feedback buffer", GpuBuffer.USAGE_VERTEX | GpuBuffer.USAGE_COPY_DST, this.size);
+            this.buffer1 = ((GlBuffer) this.gpuBuffer1).handle;
+            this.buffer2 = ((GlBuffer) this.gpuBuffer2).handle;
+            this.VAO1 = glGenVertexArrays();
+            this.VAO2 = glGenVertexArrays();
+        }
+        
+        GpuBuffer gpuBufferFor(int handle) {
+            return handle == buffer1 ? gpuBuffer1 : gpuBuffer2;
         }
         
         void delete() {
-            glDeleteBuffers(buffer1);
-            glDeleteBuffers(buffer2);
+            gpuBuffer1.close();
+            gpuBuffer2.close();
             glDeleteVertexArrays(VAO1);
             glDeleteVertexArrays(VAO2);
         }
@@ -180,7 +197,7 @@ public class GL33FeedbackDrawing {
     private static final Buffer.Allocation UBOAllocation = UBOBuffer.alloc(64);
     
     public static void beginFrame() {
-        glUseProgram(GL33ComputePrograms.dynamicMatrixProgram());
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(GL33ComputePrograms.dynamicMatrixProgram());
         for (final var batchRef : drawBatches) {
             final var batch = batchRef.get();
             if (batch == null) {
@@ -190,7 +207,7 @@ public class GL33FeedbackDrawing {
         }
         glBindTexture(GL_TEXTURE_BUFFER, 0);
         glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
-        glUseProgram(0);
+        modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(0);
     }
     
     public static void collectAllFeedback(boolean shadowsEnabled) {
@@ -234,7 +251,7 @@ public class GL33FeedbackDrawing {
                 renderTypeFeedbackBuffers.put(renderType, buffer);
             }
             
-            glUseProgram(GL33FeedbackPrograms.getProgramForOutputFormat(outputFormat));
+            modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(GL33FeedbackPrograms.getProgramForOutputFormat(outputFormat));
             
             glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, buffer.buffer1);
             glBeginTransformFeedback(GL_POINTS);
@@ -248,29 +265,27 @@ public class GL33FeedbackDrawing {
             glEndTransformFeedback();
             
             final var program = GL33FeedbackPrograms.getPostProgramForOutputFormat(outputFormat);
-            glUseProgram(program.firstInt());
+            modernmods.quartzrevived.internal.common.B3DStateHelper.useProgram(program.firstInt());
             int bufferToDraw = GL33LightEngine.drawForEachLayer(requiredVertices, program.secondInt(), buffer.buffer1, buffer.buffer2, buffer.VAO1, buffer.VAO2);
-            renderTypeDrawBuffer.put(renderType, bufferToDraw);
+            renderTypeDrawBuffer.put(renderType, buffer.gpuBufferFor(bufferToDraw));
         }
         
         for (int j = 0; j < 8; j++) {
-            RenderSystem.activeTexture(GL_TEXTURE0 + j);
-            RenderSystem.bindTexture(0);
+            GlStateManager._activeTexture(GL_TEXTURE0 + j);
+            GlStateManager._bindTexture(0);
         }
         B3DStateHelper.bindVertexArray(0);
     }
     
-    private static Matrix4f projection;
     private static Matrix4f modelView;
     
-    public static void setMatrices(Matrix4f projection, Matrix4f modelView) {
-        GL33FeedbackDrawing.projection = projection;
+    public static void setMatrices(Matrix4f modelView) {
         GL33FeedbackDrawing.modelView = modelView;
     }
     
     public static void drawRenderType(RenderType renderType) {
-        final var feedbackBuffer = renderTypeDrawBuffer.getInt(renderType);
-        if (feedbackBuffer == 0) {
+        final var feedbackBuffer = renderTypeDrawBuffer.get(renderType);
+        if (feedbackBuffer == null) {
             return;
         }
         final var drawnVertices = renderTypeDrawnVertices.getInt(renderType);
@@ -278,7 +293,6 @@ public class GL33FeedbackDrawing {
             return;
         }
         
-        B3DStateHelper.bindArrayBuffer(renderTypeDrawBuffer.getInt(renderType));
-        drawRenderTypePreboundVertexBuffer(modelView, projection, renderType, drawnVertices);
+        drawRenderTypeVertexBuffer(modelView, renderType, feedbackBuffer, drawnVertices);
     }
 }

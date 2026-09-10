@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ResourceReloadListener {
     @Inject(method = "finishReload", at = @At("HEAD"))
     public void finishReload(CallbackInfo ci) {
+        QuartzCore.ensureStarted();
         QuartzCore.resourcesReloaded();
     }
 }

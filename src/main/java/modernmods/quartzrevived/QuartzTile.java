@@ -107,9 +107,9 @@ public interface QuartzTile extends IModularTile {
         public CompoundTag getUpdateNBT() {
             var tag = new CompoundTag();
             if (lastDataUpdate != null) {
-                tag.putByteArray("data", lastDataUpdate.toROBN());
+                tag.putByteArray("data", lastDataUpdate.toROBN().toByteArray());
             } else if (fullModelData != null) {
-                tag.putByteArray("fullData", fullModelData.toROBN());
+                tag.putByteArray("fullData", fullModelData.toROBN().toByteArray());
             } else {
                 return null;
             }
@@ -122,7 +122,7 @@ public interface QuartzTile extends IModularTile {
                 handleDataNBT(nbt);
                 return;
             }
-            lastDataUpdate = new PhosphophylliteCompound(nbt.getByteArray("data"));
+            lastDataUpdate = new PhosphophylliteCompound(nbt.getByteArray("data").orElseGet(() -> new byte[0]));
             if (fullModelData == null) {
                 fullModelData = lastDataUpdate;
             } else {
@@ -136,7 +136,7 @@ public interface QuartzTile extends IModularTile {
         public CompoundTag getDataNBT() {
             if (fullModelData != null) {
                 var tag = new CompoundTag();
-                tag.putByteArray("fullData", fullModelData.toROBN());
+                tag.putByteArray("fullData", fullModelData.toROBN().toByteArray());
                 return tag;
             }
             return null;
@@ -148,7 +148,7 @@ public interface QuartzTile extends IModularTile {
                 instance.delete();
             }
             instances.clear();
-            fullModelData = new PhosphophylliteCompound(nbt.getByteArray("fullData"));
+            fullModelData = new PhosphophylliteCompound(nbt.getByteArray("fullData").orElseGet(() -> new byte[0]));
             drawBatch = null;
             iface.buildQuartzModel(fullModelData);
         }

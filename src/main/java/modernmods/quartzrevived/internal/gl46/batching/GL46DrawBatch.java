@@ -1,7 +1,8 @@
 package modernmods.quartzrevived.internal.gl46.batching;
 
 import it.unimi.dsi.fastutil.objects.*;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.SectionPos;
 import modernmods.quartzrevived.AABB;
 import org.joml.Matrix4fc;

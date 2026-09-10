@@ -1,6 +1,5 @@
 package modernmods.quartzrevived.internal.test;
 
-import net.minecraft.MethodsReturnNonnullByDefault;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -12,7 +11,6 @@ import modernmods.phosphophylliterevived.registry.RegisterBlock;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 
-@MethodsReturnNonnullByDefault
 @ParametersAreNonnullByDefault
 public class QuartzTestBlock extends Block implements EntityBlock {
     

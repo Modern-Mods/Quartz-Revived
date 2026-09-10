@@ -1,14 +1,14 @@
 package modernmods.quartzrevived.internal;
 
-import it.unimi.dsi.fastutil.objects.ReferenceArraySet;
-import it.unimi.dsi.fastutil.objects.ReferenceSet;
-import net.minecraft.CrashReport;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.model.ModelResourceLocation;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModLoadingContext;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
+import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 import net.neoforged.neoforge.data.loading.DatagenModLoader;
 import modernmods.phosphophylliterevived.registry.ClientOnly;
 import modernmods.phosphophylliterevived.registry.OnModLoad;
@@ -18,14 +18,14 @@ import modernmods.phosphophylliterevived.util.NonnullDefault;
 @NonnullDefault
 public class EventListener {
 
-    private static final ReferenceSet<ModelResourceLocation> modelsToRegister = new ReferenceArraySet<>();
+    private static final Object2ObjectMap<Identifier, StandaloneModelKey<BlockStateModelPart>> modelsToRegister = new Object2ObjectOpenHashMap<>();
 
-    public static void registerModel(ResourceLocation modelLocation) {
-        modelsToRegister.add(ModelResourceLocation.standalone(modelLocation));
+    public static synchronized StandaloneModelKey<BlockStateModelPart> registerModel(Identifier modelLocation) {
+        return modelsToRegister.computeIfAbsent(modelLocation, (Identifier location) -> new StandaloneModelKey<>(location::toString));
     }
 
-    private static void onModelRegisterEvent(ModelEvent.RegisterAdditional event) {
-        modelsToRegister.forEach(event::register);
+    private static void onModelRegisterEvent(ModelEvent.RegisterStandalone event) {
+        modelsToRegister.forEach((location, key) -> event.register(key, SimpleUnbakedStandaloneModel.simpleModelWrapper(location)));
     }
 
     @OnModLoad
@@ -35,33 +35,17 @@ public class EventListener {
             return;
         }
         modBus.addListener(EventListener::onModelRegisterEvent);
-        if (!DatagenModLoader.isRunningDataGen()) {
-            modBus.addListener(EventListener::clientSetup);
-        }
-    }
-
-    private static void clientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            try {
-                QuartzCore.startup();
-            } catch (Throwable e) {
-                final var minecraft = Minecraft.getInstance();
-                Minecraft.crash(minecraft, minecraft.gameDirectory, new CrashReport("Quartz startup exception", e));
-            }
-        });
+        modBus.addListener(QuartzCore::registerDebugEntries);
     }
 
     public static void initQuartz() {
-    }
-
-    static {
-        if (!DatagenModLoader.isRunningDataGen()) {
-            try {
-                QuartzCore.init();
-            } catch (Throwable e) {
-                final var minecraft = Minecraft.getInstance();
-                Minecraft.crash(minecraft, minecraft.gameDirectory, new CrashReport("Quartz failed to startup", e));
-            }
+        if (DatagenModLoader.isRunningDataGen()) {
+            return;
+        }
+        try {
+            QuartzCore.init();
+        } catch (Throwable e) {
+            throw new IllegalStateException("Quartz failed to startup", e);
         }
     }
 }

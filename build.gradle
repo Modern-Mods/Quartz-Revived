@@ -3,7 +3,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.143'
+    id 'net.neoforged.moddev' version '2.0.146'
 }
 
 evaluationDependsOnChildren()
@@ -14,7 +14,7 @@ base {
     archivesName = "${mod_named}"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 def phosResources = rootProject.project(':Phosphophyllite').file('src/main/resources/').getAbsolutePath()
 def phosGeneratedResources = rootProject.project(':Phosphophyllite').file('src/generated/resources/').getAbsolutePath()
@@ -37,15 +37,20 @@ neoForge {
             programArgument '--nogui'
         }
 
-        data {
-            data()
+        clientData {
+            clientData()
+            programArguments.addAll '--mod', "${modid}", '--all', '--output', file('src/generatedClient/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath(), '--existing', phosResources, '--existing', phosGeneratedResources
+        }
+
+        serverData {
+            serverData()
             programArguments.addAll '--mod', "${modid}", '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath(), '--existing', phosResources, '--existing', phosGeneratedResources
         }
 
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
-            jvmArgument '-Xmx4G'
+            jvmArgument '-Xmx2G'
         }
     }
 
@@ -61,6 +66,7 @@ neoForge {
 
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
+    srcDir 'src/generatedClient/resources'
 }
 
 repositories {
@@ -87,8 +93,6 @@ repositories {
 dependencies {
     compileOnly project(':Phosphophyllite')
     compileOnly "org.lwjgl:lwjgl-vulkan:${lwjgl_version}"
-    runtimeOnly "maven.modrinth:sodium:${sodium_version}"
-    runtimeOnly "maven.modrinth:iris:${iris_version}"
 }
 
 test {
@@ -152,6 +156,6 @@ idea {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.getRelease().set(21)
+    options.getRelease().set(25)
     options.compilerArgs << "-Xmaxerrs" << "2000"
 }

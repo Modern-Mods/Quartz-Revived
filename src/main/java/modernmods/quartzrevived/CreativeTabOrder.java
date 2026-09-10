@@ -1,18 +1,18 @@
 package modernmods.quartzrevived;
 
 import it.unimi.dsi.fastutil.objects.ReferenceArrayList;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import modernmods.phosphophylliterevived.Phosphophyllite;
 
 import java.util.List;
 
 public final class CreativeTabOrder {
 
-    public static List<ResourceLocation> before() {
-        return ReferenceArrayList.of(ResourceLocation.fromNamespaceAndPath(Phosphophyllite.modid, "creative_tab"));
+    public static List<Identifier> before() {
+        return ReferenceArrayList.of(Identifier.fromNamespaceAndPath(Phosphophyllite.modid, "creative_tab"));
     }
 
-    public static List<ResourceLocation> after() {
+    public static List<Identifier> after() {
         return new ReferenceArrayList<>();
     }
 }

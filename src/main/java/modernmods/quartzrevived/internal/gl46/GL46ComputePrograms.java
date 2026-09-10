@@ -1,6 +1,6 @@
 package modernmods.quartzrevived.internal.gl46;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import modernmods.phosphophylliterevived.util.Util;
 import modernmods.quartzrevived.Quartz;
 
@@ -11,7 +11,7 @@ public class GL46ComputePrograms {
     private static int lightChunkProgram;
     
     private static int createProgram(String path) {
-        int program = glCreateShaderProgramv(GL_COMPUTE_SHADER, Util.readResourceLocation(ResourceLocation.fromNamespaceAndPath(Quartz.modid, path)));
+        int program = glCreateShaderProgramv(GL_COMPUTE_SHADER, Util.readResourceLocation(Identifier.fromNamespaceAndPath(Quartz.modid, path)));
         if (glGetProgrami(program, GL_LINK_STATUS) != GL_TRUE) {
             final var infoLog = glGetProgramInfoLog(program);
             glDeleteProgram(program);

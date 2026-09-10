@@ -1,15 +1,15 @@
 package modernmods.quartzrevived.internal.gl33;
 
+
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.CrashReport;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import modernmods.phosphophylliterevived.util.NonnullDefault;
 import modernmods.quartzrevived.DrawBatch;
 import modernmods.quartzrevived.internal.Buffer;
@@ -105,7 +105,7 @@ public class GL33Core extends QuartzCore {
     }
     
     @Override
-    public void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, long pFinishTimeNano, boolean pDrawBlockOutline, Camera pActiveRenderInfo, GameRenderer pGameRenderer, LightTexture pLightmap, Matrix4f pProjection) {
+    public void frameStart(Matrix4f pModelViewMatrix, float pPartialTicks, Vec3 pCameraPosition, Matrix4f pProjection) {
             deletionQueue.runAll();
         
         long timeNanos = System.nanoTime();
@@ -115,7 +115,7 @@ public class GL33Core extends QuartzCore {
             deltaNano = 0;
         }
         
-        var playerPosition = pActiveRenderInfo.getPosition();
+        var playerPosition = pCameraPosition;
         Vector3d vec3d = new Vector3d(playerPosition.x, playerPosition.y, playerPosition.z);
         vec3d.floor();
         drawInfo.playerPosition.set((int) vec3d.x, (int) vec3d.y, (int) vec3d.z);
@@ -152,11 +152,11 @@ public class GL33Core extends QuartzCore {
     }
     
     @Override
-    public void shadowPass(Matrix4f modelViewMatrix, Matrix4f projectionMatrix) {
+    public void shadowPass(Matrix4f modelViewMatrix) {
         if(!GL33FeedbackDrawing.hasBatch()){
             return;
         }
-        GL33FeedbackDrawing.setMatrices(projectionMatrix, modelViewMatrix);
+        GL33FeedbackDrawing.setMatrices(modelViewMatrix);
         GL33FeedbackDrawing.getActiveRenderTypes().forEach(GL33FeedbackDrawing::drawRenderType);
     }
     
@@ -166,16 +166,11 @@ public class GL33Core extends QuartzCore {
             return;
         }
         
-        BufferUploader.invalidate();
-        IrisDetection.bindIrisFramebuffer();
         
-        GL33FeedbackDrawing.setMatrices(RenderSystem.getProjectionMatrix(), drawInfo.modelViewMatrix);
+        GL33FeedbackDrawing.setMatrices(drawInfo.modelViewMatrix);
         
         for (final var renderType : GL33FeedbackDrawing.getActiveRenderTypes()) {
-            if (!(renderType instanceof RenderType.CompositeRenderType compositeRenderType)) {
-                continue;
-            }
-            if(compositeRenderType.state().transparencyState != RenderStateShard.NO_TRANSPARENCY) {
+            if (renderType.hasBlending()) {
                 continue;
             }
             GL33FeedbackDrawing.drawRenderType(renderType);
@@ -187,19 +182,15 @@ public class GL33Core extends QuartzCore {
         if(!GL33FeedbackDrawing.hasBatch()){
             return;
         }
-        BufferUploader.invalidate();
         
         for (final var renderType : GL33FeedbackDrawing.getActiveRenderTypes()) {
-            if (!(renderType instanceof RenderType.CompositeRenderType compositeRenderType)) {
+            if (!renderType.hasBlending()) {
                 continue;
             }
-            if(compositeRenderType.state().transparencyState == RenderStateShard.NO_TRANSPARENCY) {
-                continue;
-            }
-            RenderSystem.depthMask(false);
+            GlStateManager._depthMask(false);
             GL33FeedbackDrawing.drawRenderType(renderType);
         }
-        RenderSystem.depthMask(true);
+        GlStateManager._depthMask(true);
     }
     
     @Override

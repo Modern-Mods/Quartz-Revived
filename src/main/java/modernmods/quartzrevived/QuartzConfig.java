@@ -19,11 +19,11 @@ public class QuartzConfig {
     public static final boolean INIT_COMPLETED;
     
     private static boolean isValidPhosLoaading() {
-        final var phosFileInfo = FMLLoader.getLoadingModList().getModFileById(Phosphophyllite.modid);
+        final var phosFileInfo = FMLLoader.getCurrent().getLoadingModList().getModFileById(Phosphophyllite.modid);
         if (phosFileInfo == null) {
             return false;
         }
-        final var quartzFileInfo = FMLLoader.getLoadingModList().getModFileById(Quartz.modid);
+        final var quartzFileInfo = FMLLoader.getCurrent().getLoadingModList().getModFileById(Quartz.modid);
         if (quartzFileInfo == null) {
             // this should always be false
             throw new IllegalStateException("Quartz not loading");
