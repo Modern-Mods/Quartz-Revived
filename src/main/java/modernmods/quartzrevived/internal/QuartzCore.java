@@ -63,7 +63,7 @@ public abstract class QuartzCore {
                 instance = createCore(QuartzConfig.Mode.Automatic);
             }
             if (instance == null) {
-                throw new IllegalStateException("QuartzCore failed to load, this shouldn't be possible");
+                throw new IllegalStateException("No Quartz backend could be initialized, see the log for why each backend failed");
             }
         } catch (NoClassDefFoundError e) {
             if (!e.getMessage().contains("phosphophyllite")) {
@@ -80,9 +80,7 @@ public abstract class QuartzCore {
     @Nullable
     private static QuartzCore createCore(QuartzConfig.Mode mode) {
         return switch (mode) {
-            case Vulkan10 -> VKCore.INSTANCE;
-            case OpenGL46 -> GL46Core.INSTANCE;
-            case OpenGL33 -> GL33Core.INSTANCE;
+            case Vulkan10, OpenGL46, OpenGL33 -> loadCore(mode);
             case Automatic -> {
                 for (QuartzConfig.Mode value : QuartzConfig.Mode.values()) {
                     if (value == QuartzConfig.Mode.Automatic) {
@@ -99,7 +97,25 @@ public abstract class QuartzCore {
         };
     }
     
+    @Nullable
+    private static QuartzCore loadCore(QuartzConfig.Mode mode) {
+        try {
+            return switch (mode) {
+                case Vulkan10 -> VKCore.INSTANCE;
+                case OpenGL46 -> GL46Core.INSTANCE;
+                case OpenGL33 -> GL33Core.INSTANCE;
+                default -> null;
+            };
+        } catch (NoClassDefFoundError e) {
+            throw e;
+        } catch (Throwable e) {
+            LOGGER.error("Quartz failed to initialize the {} backend, falling back to the next one", mode, e);
+            return null;
+        }
+    }
+    
     static void init() {
+
     }
     
     private static boolean wasInit = false;

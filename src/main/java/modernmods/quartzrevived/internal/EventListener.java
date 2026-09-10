@@ -2,8 +2,6 @@ package modernmods.quartzrevived.internal;
 
 import it.unimi.dsi.fastutil.objects.ReferenceArraySet;
 import it.unimi.dsi.fastutil.objects.ReferenceSet;
-import net.minecraft.CrashReport;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.fml.ModLoadingContext;
@@ -45,8 +43,7 @@ public class EventListener {
             try {
                 QuartzCore.startup();
             } catch (Throwable e) {
-                final var minecraft = Minecraft.getInstance();
-                Minecraft.crash(minecraft, minecraft.gameDirectory, new CrashReport("Quartz startup exception", e));
+                throw new IllegalStateException("Quartz startup exception", e);
             }
         });
     }
@@ -59,8 +56,7 @@ public class EventListener {
             try {
                 QuartzCore.init();
             } catch (Throwable e) {
-                final var minecraft = Minecraft.getInstance();
-                Minecraft.crash(minecraft, minecraft.gameDirectory, new CrashReport("Quartz failed to startup", e));
+                throw new IllegalStateException("Quartz failed to startup", e);
             }
         }
     }

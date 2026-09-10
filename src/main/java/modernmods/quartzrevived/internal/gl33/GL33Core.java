@@ -3,9 +3,8 @@ package modernmods.quartzrevived.internal.gl33;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.CrashReport;
-import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderStateShard;
@@ -49,9 +48,7 @@ public class GL33Core extends QuartzCore {
                 builder.append(glGetStringi(GL_EXTENSIONS, i)).append('\n');
             }
             
-            // this is the backup impl, so this is ok to do
-            final var minecraft = Minecraft.getInstance();
-            Minecraft.crash(minecraft, minecraft.gameDirectory, new CrashReport("Quartz startup failed", new IllegalStateException(builder.toString())));
+            throw new IllegalStateException(builder.toString());
         }
         final var hasKHRDebug = GL.getCapabilities().GL_KHR_debug;
         try {
