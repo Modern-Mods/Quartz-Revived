@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "modernmods.quartzrevived.internal.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+  ],
+  "client": [
+    "QuartzStartupMixin",
+    "LevelRendererMixin",
+    "MinecraftShutdownMixin",
+    "ResourceReloadListener"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

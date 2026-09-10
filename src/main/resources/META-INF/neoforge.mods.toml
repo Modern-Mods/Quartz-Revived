@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="${loader_version}"
+license="${license}"
+
+[[mods]]
+modId="${modid}"
+version="${mod_version}"
+displayName="${mod_named}"
+displayURL="https://biggerseries.net/"
+authors="${author}"
+logoFile="logo.png"
+description='''
+${description}
+'''
+
+[[mixins]]
+config="quartz.mixins.json"
+
+[[dependencies.quartz]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neoversion},)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.quartz]]
+    modId="minecraft"
+    type="required"
+    versionRange="[${mcversion}]"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.quartz]]
+    modId="phosphophyllite"
+    type="required"
+    versionRange="${phos_version_range}"
+    ordering="NONE"
+    side="BOTH"
